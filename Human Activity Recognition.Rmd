@@ -1,0 +1,56 @@
+---
+title: "Human Activity Recognition"
+output: html_document
+---
+###Background
+Using devices such as Jawbone Up, Nike FuelBand, and Fitbit it is now possible to collect a large amount of data about personal activity relatively inexpensively. These type of devices are part of the quantified self movement – a group of enthusiasts who take measurements about themselves regularly to improve their health, to find patterns in their behavior, or because they are tech geeks. One thing that people regularly do is quantify how much of a particular activity they do, but they rarely quantify how well they do it. In this project, your goal will be to use data from accelerometers on the belt, forearm, arm, and dumbell of 6 participants. They were asked to perform barbell lifts correctly and incorrectly in 5 different ways. More information is available from the website here: http://groupware.les.inf.puc-rio.br/har (see the section on the Weight Lifting Exercise Dataset). 
+
+###Data loading and cleaning
+```{r}
+trainurl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-training.csv"
+testurl <- "http://d396qusza40orc.cloudfront.net/predmachlearn/pml-testing.csv"
+train <- read.csv(url(trainurl),na.strings=c("","NA","#DIV/0!"))
+test <- read.csv(url(testurl),na.strings=c("","NA","#DIV/0!"))
+
+train<-train[,colSums(is.na(train))==0]   #delete all NA columns
+test<-test[,colSums(is.na(test))==0]
+train <- train[,-c(1,2,3,4,5,6,7)]    #delete irrelavant variable
+test <- test[,-c(1,2,3,4,5,6,7)]   
+
+library(caret)
+subsamples <- createDataPartition(y=train$classe, p=0.7, list=FALSE)
+subtrain <- train[subsamples,]
+subtest <- train[-subsamples,]
+```
+
+###Model selection with cross validation
+```{r}
+library(rpart)
+library(randomForest)
+model1 <- rpart(classe~.,data=subtrain)
+model2 <- randomForest(classe~.,data=subtrain)
+prediction1 <- predict(model1,newdata=subtest,type="class")
+prediction2 <- predict(model2,newdata=subtest,type="class")
+confusionMatrix(prediction1, subtest$classe)
+confusionMatrix(prediction2, subtest$classe)
+```
+Obviously, random forest gives better accuracy and is finally employed.
+
+### Final model and prediction
+```{r}
+finalmodel <- randomForest(classe~.,data=train)
+prediction <- predict(finalmodel,newdata=test,type="class")
+
+pml_write_files = function(x){
+  n = length(x)
+  for(i in 1:n){
+    filename = paste0("problem_id_",i,".txt")
+    write.table(x[i],file=filename,quote=FALSE,row.names=FALSE,col.names=FALSE)
+  }
+}
+pml_write_files(prediction)
+```
+
+
+###reference
+Velloso, E.; Bulling, A.; Gellersen, H.; Ugulino, W.; Fuks, H. Qualitative Activity Recognition of Weight Lifting Exercises. Proceedings of 4th International Conference in Cooperation with SIGCHI (Augmented Human '13) . Stuttgart, Germany: ACM SIGCHI, 2013.
